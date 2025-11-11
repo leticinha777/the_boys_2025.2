@@ -3,6 +3,31 @@
 #include <math.h>
 #include "eventos.h"
 
+
+int aleat (int min, int max)
+{
+    //retorna um número aleatório entre min e max
+    return rand() % (max - min + 1) + min;
+}
+
+//Ordena um vetor utilizando insertion Sort
+void insertion_sort(struct distancia_bases vetor[], int num)
+{
+  struct distancia_bases  temp;
+  for (int i = 1; i < num; i++)
+  {
+    int j = i -1;
+    temp = vetor[i];
+
+    while((j>=0) && vetor[j].distancia > temp.distancia)
+    {
+      vetor[j+1] = vetor[j];
+      j--;
+    }
+    vetor[j +1] = temp;
+  }
+}
+
 float distancia (struct coordenada b, struct coordenada d)
 {
     //calcula a distância entre dois ponos usando pitágoras, retorna a distância como um float
@@ -232,8 +257,9 @@ int base_mais_proxima (struct mundo *w, int t, int missao)
 {
     for (int i = 0; i < w->n_missoes; i++)
     {
-        w->vmissoes[i].distancia[i]
-    }
+        w->vmissoes[i].distancia[i].distancia = distancia(w->vmissoes->coord_m, w->vbases->local);
+        w->vmissoes[i].distancia[i].distancia = 
+   }
 
   // ordena o vetor com as distãncias entre as bases, de maneira crescente
   insertion_sort(d, w->nbases);
