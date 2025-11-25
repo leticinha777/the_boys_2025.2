@@ -4,60 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "theboys.h"
+#include "mundo.h"
 
-struct coordenada
-{
-  int x;
-  int y;
-};
+struct mundo;
 
-struct distancia_bases
-{
-  int idbase;
-  float distancia;
-};
+float distancia (struct coordenada b, struct coordenada d);
 
-struct heroi
-{
-  int id_h;               
-  int paciencia;             
-  int velocidade;              
-  int xp;                       
-  int base;                    
-  int vida;                    
-  struct cjto_t *hab;         
-};
+int aleat (int min, int max);
 
-struct base
-{
-  int id;                   
-  int lot;                  
-  int fila_max;             
-  int num_missoes;          
-  struct cjto_t *pres;      
-  struct lista_t *espera;     
-  struct coordenada local;  
-};
-
-struct missao
-{
-  int idm;                                                
-  int tentativa;                    
-  struct cjto_t *hab;               
-  struct distancia_bases distancia[N_BASES];  
-  struct coordenada coord_m;  
-};
-
-struct evento
-{
-  int time;    
-  int heroi;    
-  int base;   
-  int missao;   
-};
-
-//Função que cria o evento e retorna
 struct evento *cria_evento (int time, int heroi, int base, int missao);
 
 //Função que trata o evento CHEGA,

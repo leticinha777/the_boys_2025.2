@@ -38,6 +38,8 @@ struct evento *cria_evento (int time, int heroi, int base, int missao)
 {
     struct evento *e;
 
+    e = malloc (sizeof (struct evento));
+
     if(!e)
         return NULL;
 
@@ -59,7 +61,7 @@ void chega (struct mundo *w, int t,int h,int b)
         return;
 
     w->vherois[h].base = b; // atualiza a base do herói
-    aux = lista_tamanho(w->vbases[b].espera);
+    aux = fila_tamanho(w->vbases[b].espera);
 
     if(cjto_card(w->vbases[b].pres) < w->vbases[b].lot && !aux) // verifica se a base não está lotada e se não há fila de espera
         espera = 1;
@@ -95,9 +97,9 @@ void espera (struct mundo *w, int t, int h, int b)
     if(w->vherois[h].vida == 1) // se o herói já morreu, não faz nada
         return;
     
-    aux = lista_tamanho(w->vbases[b].espera);
+    aux = fila_tamanho(w->vbases[b].espera);
 
-    lista_insere(w->vbases[b].espera, w->vherois[h].id_h, -1);
+    fila_insere(w->vbases[b].espera, w->vherois[h].id_h);
     maior_fila(w, b); // faz a atualização do maior valor da fila de espera
 
     e = cria_evento(t,-1,b,-1);
@@ -134,14 +136,14 @@ void avisa (struct mundo *w, int t, int b)
     struct evento *e;
 
     printf("%6d: AVISA  PORTEIRO BASE %d (%2d/%2d) FILA [ ", t, b, cjto_card(w->vbases[b].pres) , w->vbases[b].lot);
-    lista_imprime(w->vbases[b].espera);
+    fila_imprime(w->vbases[b].espera);
     printf(" ]\n");
 
-    while((cjto_card(w->vbases[b].pres) < w->vbases[b].lot) && (lista_tamanho(w->vbases[b].espera) > 0))
+    while((cjto_card(w->vbases[b].pres) < w->vbases[b].lot) && (fila_tamanho(w->vbases[b].espera) > 0))
     {
         h = -1;
-        if(lista_retira(w->vbases[b].espera, &h, 0) == 0) // Verifica se a remoção foi bem-sucedida
-            continue;
+        if(fila_retira(w->vbases[b].espera, &h) == -1)
+            return;
 
         cjto_insere(w->vbases[b].pres, h);
 
@@ -249,30 +251,185 @@ void morre (struct mundo *w, int t, int h, int b, int ms)
 
     fprio_insere(w->lef, e, AVISA, t);
 
-    printf("%6d: MORRE  HEROI %2d MISSAO %d\n", t, h, missao);
+    printf("%6d: MORRE  HEROI %2d MISSAO %d\n", t, h, ms);
 }
 
 //Função usada para calcular as bases mais proximas da missão
-int base_mais_proxima (struct mundo *w, int t, int missao)
+int encontra_bmp_apta(struct mundo *w, int id_missao) 
 {
-    for (int i = 0; i < w->n_missoes; i++)
+    // Percorre essa lista
+    for (int i = 0; i < w->n_bases; i++) 
     {
-        w->vmissoes[i].distancia[i].distancia = distancia(w->vmissoes->coord_m, w->vbases->local);
-        w->vmissoes[i].distancia[i].distancia = 
-   }
+        int base_id = w->vmissoes[id_missao].distancia[i].idbase;
 
-  // ordena o vetor com as distãncias entre as bases, de maneira crescente
-  insertion_sort(d, w->nbases);
+        //verifica se ha herois na base
+        if (cjto_card(w->vbases[base_id].pres) > 0) 
+        {
+            //cria um conjunto temporario, para armazenar as habs da equipe
+            struct cjto_t *habilidades_equipe = cjto_cria(N_HABILIDADES);
+            if (!habilidades_equipe)
+                return -1; 
+            
+            for (int h_id = 0; h_id < w->n_herois; h_id++) 
+                //se o herói pertence ao conjunto da base e esta vivo, adiciona as habs ao cjto temporario  
+                if (cjto_pertence(w->vbases[base_id].pres, w->vherois[h_id].id_h) && w->vherois[h_id].vida == 0) 
+                {
+                    for (int hab_id = 0; hab_id < w->n_hab; hab_id++) 
+                    {
+                        if (cjto_pertence(w->vherois[h_id].hab, hab_id)) 
+                            cjto_insere(habilidades_equipe, hab_id);
+                        
+                    }
+                }
+
+            // vê se o conjunto de habs da equipe contem as habs da missão
+            if (cjto_contem(habilidades_equipe, w->vmissoes[id_missao].hab)) 
+            {
+                cjto_destroi(habilidades_equipe);
+                return base_id;
+            }
+            
+            // se não for apta, destrói o conjunto temporário e tenta a próxima base
+            cjto_destroi(habilidades_equipe);
+        }
+    }
+    
+    // não encontrou base apta
+    return -1;
 }
 
 //Função que trata o evento MISSAO
 void missao (struct mundo *w, int t, int ms)
 {
+  int bmp = encontra_bmp_apta(w, ms); // função auxiliar que encontra a base mais próxima apta
+  struct evento *e;
+  
+  if(bmp != -1)
+  {
+    w->vbases[bmp].num_missoes++; 
+    for (int h_id = 0; h_id < w->n_herois; h_id++) 
+    {
+        //incrementa a xp dos heróis que participaram da missao e estão vivos
+      if(cjto_pertence(w->vbases[bmp].pres, w->vherois[h_id].id_h) && w->vherois[h_id].vida == 0)
+        w->vherois[h_id].xp++;
+    }
+    printf("%6d: MISSAO %d CUMPRIDA BASE %d\n", t, ms, bmp);
+    w->missoes_cumpridas++;
+    return; 
+  }
 
+  //nenhuma equipe está apta, bmp = -1. O primeiro elemento do vetor de distâncias é a base mais próxima
+    bmp = w->vmissoes[ms].distancia[0].idbase;
+
+  if(t % 2500 == 0 && w->ncompostov > 0 && bmp != -1 && cjto_card(w->vbases[bmp].pres) > 0)
+  {
+    struct heroi *heroi_xp = NULL; 
+    int max_xp = -1;
+    int id_morto = -1; 
+    
+    // encontra o heroi mais experiente da base
+    for(int h_idx = 0; h_idx < w->n_herois; h_idx++)
+    {
+        //se o herói está nesta base e está vivo
+      if(cjto_pertence(w->vbases[bmp].pres, w->vherois[h_idx].id_h) && (w->vherois[h_idx].vida == 0))
+      {
+        //verifica se o herói tem mais xp que o maximo atual
+        if(w->vherois[h_idx].xp > max_xp)
+        {
+          max_xp = w->vherois[h_idx].xp;
+          heroi_xp = &(w->vherois[h_idx]); // guarda o endereço do herói mais experiente
+          id_morto = w->vherois[h_idx].id_h;
+        }
+      }
+    }
+
+    if(heroi_xp != NULL) 
+    {
+      w->ncompostov--; 
+      w->missoes_cumpridas++;
+
+      e = cria_evento(t, heroi_xp->id_h, bmp, ms);
+      if(!e)
+          return;
+
+      fprio_insere(w->lef, e, MORRE, t);
+
+      // aumenta o xp dos outros herois
+      for (int h_idx = 0; h_idx < w->n_herois; h_idx++)
+      {
+        if (cjto_pertence(w->vbases[bmp].pres, w->vherois[h_idx].id_h) && (w->vherois[h_idx].vida == 0) && w->vherois[h_idx].id_h != id_morto) 
+          w->vherois[h_idx].xp++;
+        
+      }
+      printf("%6d: MISSAO %d CUMPRIDA COMPOSTO BASE %d\n", t, ms, bmp);
+      return;
+    }
+  }
+
+
+  //missao adiada, impossivel no momento
+  w->vmissoes[ms].tentativa++;
+  e = cria_evento(t + 24 * 60, -1, -1, ms);
+  if (!e)
+    return;
+  fprio_insere(w->lef, e, MISSAO, t + 24 * 60);
+  printf("%6d: MISSAO %d IMPOSSIVEL\n", t, ms);
 }
 
 //Função que trata o evento FIM, imprime as estatísticas finais da simulação
 void fim (struct mundo *w, int t, int qev)
 {
+    int i, mortos, tent, maior, menor;
+    float aux, media;
 
+    mortos = 0;
+
+    printf("%6d: FIM\n", t);
+
+    for(i = 0; i < w->n_herois; i++)
+    {
+        if(w->vherois[i].vida == 1)
+        {
+            printf("HEROI %2d MORTO  PAC %3d VEL %4d EXP %4d HABS [ ", i, w->vherois[i].paciencia, w->vherois[i].velocidade, w->vherois[i].xp);
+            mortos++;
+        }
+        else
+            printf("HEROI %2d VIVO  PAC %3d VEL %4d EXP %4d HABS [ ", i, w->vherois[i].paciencia, w->vherois[i].velocidade, w->vherois[i].xp);
+        
+        cjto_imprime(w->vherois[i].hab);
+        printf(" ]\n");
+    }
+
+    for(i = 0; i < w->n_bases; i++)
+        printf("BASE %2d LOT %2d FILA MAX %2d MISSOES %d\n", i, w->vbases[i].lot, w->vbases[i].fila_max, w->vbases[i].num_missoes);
+    
+
+    printf("EVENTOS TRATADOS: %d\n", qev);
+
+    maior = 1;
+    menor = 1;
+
+    for(i = 0; i < w->n_missoes; i++){
+        tent = w->vmissoes[i].tentativa;
+
+        if(tent > maior){
+            maior = tent;
+            continue;
+        }
+
+        if(tent < menor){
+            menor = tent;
+        }
+    }
+
+    aux = w->missoes_cumpridas * 100.0 / w->n_missoes;
+
+    media = (menor + maior) / 2.0;
+
+    printf("MISSOES CUMPRIDAS: %d/%d (%.1f%%)\n", w->missoes_cumpridas, w->n_missoes, aux);
+    printf("TENTATIVAS/MISSAO: MIN %d, MAX %d, MEDIA %.1f\n", menor, maior, media);
+
+    aux = mortos * 100.0 / w->n_herois;
+
+    printf("TAXA MORTALIDADE: %.1f%%\n", aux);
 }
