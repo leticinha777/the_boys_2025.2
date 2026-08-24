@@ -1,6 +1,6 @@
 # 🦸‍♂️ The Boys - Simulação de Eventos Discretos em C
 
-Projeto prático desenvolvido para a disciplina de **Programação 2**.
+Projeto prático desenvolvido para a disciplina de **Programação 1**.
 
 O **The Boys** é um simulador em C onde heróis se deslocam por um mundo virtual, reúnem-se em bases, formam equipes para cumprir missões e enfrentam o risco de morte em combate. Toda a dinâmica é controlada por uma simulação dirigida por eventos de tempo discreto.
 
